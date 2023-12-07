@@ -2,8 +2,7 @@
 
 public enum TrainType
 {
-    ElectricHeavyLocomotive = 0,
-    DieselHeavyLocomotive = 1,
-    ElectricLightWeightLocomotive = 2,
-    DieselLightWeightLocomotive = 3
+    Electric = 0,
+    Steam = 1,
+    Diesel = 2,
 }

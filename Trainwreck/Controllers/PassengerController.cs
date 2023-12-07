@@ -3,6 +3,8 @@ using Trainwreck.Entities;
 using Microsoft.EntityFrameworkCore;
 using Trainwreck.Repositories;
 using Trainwreck.Enums;
+using Trainwreck.Models.Interfaces;
+using Trainwreck.Models;
 
 namespace Trainwreck.Controllers;
 [ApiController]
@@ -17,32 +19,17 @@ public class PassengerController : ControllerBase
     }
 
     [HttpPut]
-    public IActionResult AddPassenger([FromBody] Passenger passenger, CancellationToken cancellationToken)
+    public async Task<IActionResult> AddPassenger([FromBody] Passenger passenger)
     {
         var repository = GetRepository();
-        repository.RunSql($"INSERT INTO Passenger (id, name) VALUES (1, '{passenger.Name}') ", cancellationToken);
-        return this.Ok();
+        await repository.RunSqlAsync($"INSERT INTO Passenger (id, name) VALUES (1, '{passenger.Name}')");
+        return Ok();
     }
 
     [HttpGet("{id}")]
     public Task<Passenger> GetPassenger(Guid passengerId, CancellationToken cancellationToken)
     {
         return c.Passengers.Where(c => c.Id == passengerId).FirstAsync(cancellationToken);
-    }
-
-    [HttpPost("{passengerName}/ticket")]
-    public IActionResult SavePassengerTicket(string passengerName)
-    {
-        try
-        {
-            using var file = System.IO.File.Create($"C:/data/traintickets/{passengerName}");
-            Request.Body.CopyTo(file);
-        }
-        catch
-        {
-        }
-
-        return this.NoContent();
     }
 
     [HttpGet("Train/{trainId}/Passengers/List")]
@@ -60,7 +47,51 @@ public class PassengerController : ControllerBase
             names += $", {passengerNames[i]}";
         }
 
-        return this.Ok(names);
+        return Ok(names);
+    }
+
+    [HttpPost("{passengerName}/ticket")]
+    public IActionResult SavePassengerTicket(string passengerName)
+    {
+        try
+        {
+            using var file = System.IO.File.Create($"C:/data/traintickets/{passengerName}");
+            Request.Body.CopyTo(file);
+        }
+        catch
+        {
+        }
+
+        return NoContent();
+    }
+
+    [HttpPatch("train/{trainId}/start")]
+    public async Task<IActionResult> StartTrain(Guid trainId)
+    {
+        var train = await c.Trains.SingleOrDefaultAsync(t => t.Id == trainId);
+        if (train == null)
+        {
+            return BadRequest();
+        }
+
+        ILocomotive locomotive = null;
+
+        switch (train.TrainType)
+        {
+            case TrainType.Electric:
+                locomotive = new ElectricLocomotive();
+                break;
+            case TrainType.Diesel:
+                locomotive = new DieselLocomotive();
+                break;
+            case TrainType.Steam:
+                locomotive = new SteamLocomotive();
+                break;
+        }
+
+        locomotive.ConnectToTrain(train);
+
+        return NoContent();
     }
 
     [HttpPost("/train/{trainId}/leaveStation")]
@@ -71,35 +102,7 @@ public class PassengerController : ControllerBase
         train.IsMoving = true;
         train.DoorsClosed = true;
 
-        repository.Update(train);
-
-        return this.NoContent();
-    }
-
-    [HttpPatch("train/{trainId}/start")]
-    public async Task<IActionResult> StartTrain(Guid trainId)
-    {
-        var train = await c.Trains.SingleOrDefaultAsync(t => t.Id == trainId);
-        if (train == null)
-        {
-            return this.BadRequest();
-        }
-
-        switch (train.TrainType)
-        {
-            case TrainType.ElectricHeavyLocomotive:
-                this.StartElectricEngines(train);
-                break;
-            case TrainType.ElectricLightWeightLocomotive:
-                StartElectricEngine(train);
-                break;
-            case TrainType.DieselHeavyLocomotive:
-                StartDieselEngines(train);
-                break;
-            case TrainType.DieselLightWeightLocomotive:
-                StartDieselEngine(train);
-                break;
-        }
+        await repository.UpdateAsync(train);
 
         return NoContent();
     }
@@ -107,25 +110,5 @@ public class PassengerController : ControllerBase
     private static Repository GetRepository()
     {
         return new Repository("Server=(localdb)\\mssqllocaldb;Database=trains;User=sa_sql;Password=P@ssw0rd");
-    }
-
-    private void StartDieselEngine(Train train)
-    {
-        // custom logic to start this specific train type
-    }
-
-    private void StartDieselEngines(Train train)
-    {
-        // custom logic to start this specific train type
-    }
-
-    private void StartElectricEngine(Train train)
-    {
-        // custom logic to start this specific train type
-    }
-
-    private void StartElectricEngines(Train train)
-    {
-        // custom logic to start this specific train type
     }
 }

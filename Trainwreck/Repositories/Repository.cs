@@ -9,9 +9,9 @@ public class Repository
         
     }
 
-    public void RunSql(string sql, CancellationToken cancellationToken)
+    public Task RunSqlAsync(string sql)
     {
-        
+        return Task.CompletedTask;
     }
 
     internal Task<Train> GetTrainAsync(Guid trainId)
@@ -19,8 +19,8 @@ public class Repository
         return Task.FromResult(new Train());
     }
 
-    internal void Update<T>(T train)
+    internal Task UpdateAsync<T>(T train)
     {
-        
+        return Task.CompletedTask;
     }
 }
